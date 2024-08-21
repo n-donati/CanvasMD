@@ -59,7 +59,7 @@ To launch CanvasMD more conveniently, you can create an alias:
 1. Open your shell configuration file (e.g., `~/.bashrc`, `~/.zshrc`, or `~/.bash_profile`)
 2. Add the following line, replacing `/path/to/CanvasMD` with the actual path to your CanvasMD directory:
    ```
-   alias canvas='python /path/to/CanvasMD/canvasmd.py'
+   alias canvas='python3 /path/to/CanvasMD/canvasmd.py'
    ```
 3. Save the file and reload your shell configuration:
    ```
