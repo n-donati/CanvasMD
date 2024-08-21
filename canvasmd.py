@@ -51,7 +51,7 @@ class CanvasAPI:
         assignments = response.json()
         submissions = self.get_bulk_assignment_submissions(course_id, [a['id'] for a in assignments])
         
-        current_time = datetime.now(USER_TIMEZONE)
+        current_time = datetime.now(timezone(timedelta(hours=USER_TIMEZONE_OFFSET)))
         filtered_assignments = []
 
         for assignment in assignments:
@@ -64,7 +64,7 @@ class CanvasAPI:
                 assignment['submitted'] = submissions.get(str(assignment['id']), {}).get('workflow_state') == 'submitted'
                 filtered_assignments.append(assignment)
 
-        return sorted(filtered_assignments, key=lambda x: (self.parse_date(x.get('due_at')) is None, self.parse_date(x.get('due_at')) or datetime.max.replace(tzinfo=USER_TIMEZONE)))
+        return sorted(filtered_assignments, key=lambda x: (self.parse_date(x.get('due_at')) is None, self.parse_date(x.get('due_at')) or datetime.max.replace(tzinfo=timezone(timedelta(hours=USER_TIMEZONE_OFFSET)))))
 
     @staticmethod
     def parse_date(date_string: Optional[str]) -> Optional[datetime]:
