@@ -87,44 +87,64 @@ class CanvasAPI:
         return {}
 
     def submit_file_assignment(self, course_id: int, assignment_id: int, file_path: str) -> Tuple[bool, str]:
-        params = {
-            'name': os.path.basename(file_path),
-            'size': os.path.getsize(file_path),
-            'content_type': 'application/octet-stream',
-        }
-        response = self._make_request("POST", f"courses/{course_id}/assignments/{assignment_id}/submissions/self/files", data=params)
-        if not response or response.status_code != 200:
-            return False, f"Failed to get upload URL. Status: {response.status_code if response else 'N/A'}"
-
-        upload_data = response.json()
-        upload_url = upload_data.get('upload_url')
-        upload_params = upload_data.get('upload_params', {})
-        
-        if not upload_url:
-            return False, f"Upload URL not found in response. Response: {upload_data}"
-        
-        with open(file_path, 'rb') as file:
-            upload_response = requests.post(upload_url, data=upload_params, files={'file': file}, timeout=30)
-        
-        if upload_response.status_code != 201:
-            return False, f"File upload failed. Status: {upload_response.status_code}"
-        
-        file_id = upload_response.json().get('id')
-        if not file_id:
-            return False, f"File ID not found in upload response."
-        
-        submit_params = {
-            'submission': {
-                'submission_type': 'online_upload',
-                'file_ids': [file_id]
+        try:
+            # Step 1: Get file upload URL
+            file_params = {
+                'name': os.path.basename(file_path),
+                'size': os.path.getsize(file_path),
+                'content_type': self._get_content_type(file_path),
             }
-        }
-        submit_response = self._make_request("POST", f"courses/{course_id}/assignments/{assignment_id}/submissions", json=submit_params)
-        
-        if not submit_response or submit_response.status_code != 201:
-            return False, f"Assignment submission failed. Status: {submit_response.status_code if submit_response else 'N/A'}"
-        
-        return True, "File uploaded and assignment submitted successfully!"
+            response = self._make_request("POST", f"courses/{course_id}/assignments/{assignment_id}/submissions/self/files", data=file_params)
+            if not response or response.status_code != 200:
+                return False, f"Failed to get upload URL. Status: {response.status_code if response else 'N/A'}, Response: {response.text if response else 'No response'}"
+
+            upload_data = response.json()
+            upload_url = upload_data.get('upload_url')
+            upload_params = upload_data.get('upload_params', {})
+
+            if not upload_url:
+                return False, f"Upload URL not found in response. Response: {upload_data}"
+
+            # Step 2: Upload the file
+            with open(file_path, 'rb') as file:
+                files = {
+                    'file': (os.path.basename(file_path), file, self._get_content_type(file_path))
+                }
+                upload_response = requests.post(upload_url, data=upload_params, files=files, timeout=60)
+
+            if upload_response.status_code != 201:
+                return False, f"File upload failed. Status: {upload_response.status_code}, Response: {upload_response.text}"
+
+            file_data = upload_response.json()
+            file_id = file_data.get('id')
+            if not file_id:
+                return False, f"File ID not found in upload response. Response: {file_data}"
+
+            # Step 3: Submit the assignment
+            submit_params = {
+                'submission': {
+                    'submission_type': 'online_upload',
+                    'file_ids': [file_id]
+                }
+            }
+            submit_response = self._make_request("POST", f"courses/{course_id}/assignments/{assignment_id}/submissions", json=submit_params)
+
+            if not submit_response or submit_response.status_code != 201:
+                return False, f"Assignment submission failed. Status: {submit_response.status_code if submit_response else 'N/A'}, Response: {submit_response.text if submit_response else 'No response'}"
+
+            return True, "File uploaded and assignment submitted successfully!"
+
+        except Exception as e:
+            return False, f"An error occurred during file submission: {str(e)}"
+
+    def _get_content_type(self, file_path: str) -> str:
+        """Determine the correct MIME type for the file."""
+        import mimetypes
+        content_type, _ = mimetypes.guess_type(file_path)
+        if content_type is None:
+            # Default to application/octet-stream if type can't be guessed
+            return 'application/octet-stream'
+        return content_type
 
 class Settings:
     def __init__(self):
@@ -225,6 +245,21 @@ class UI:
         self._draw_title(title)
         self._draw_content(content)
 
+    def _draw_content(self, content: str):
+        content_lines = content.split('\n')
+        start_y = 5
+        start_x = 2
+        max_width = self.width - self.ascii_width - 4
+        max_lines = self.height - start_y - 3  # Leave space for the footer
+
+        for idx, line in enumerate(content_lines):
+            if idx < max_lines:
+                truncated_line = line[:max_width]
+                self.stdscr.addstr(start_y + idx, start_x, truncated_line)
+            else:
+                self.stdscr.addstr(start_y + max_lines - 1, start_x, "... (message truncated)")
+                break
+
     def _draw_header(self):
         login_status = f"Logged in: {CanvasApp.logged_in}"
         current_time = datetime.now().strftime("%H:%M - %d/%m/%Y")
@@ -264,16 +299,6 @@ class UI:
         self.stdscr.addstr(3, 2, title)
         self.stdscr.attroff(curses.color_pair(3) | curses.A_BOLD)
 
-    def _draw_content(self, content: str):
-        content_lines = content.split('\n')
-        start_y = 5
-        start_x = 2
-        max_width = self.width - self.ascii_width - 4
-
-        for idx, line in enumerate(content_lines):
-            if start_y + idx < self.height - 3:
-                self.stdscr.addstr(start_y + idx, start_x, line[:max_width])
-
     def _draw_menu_items(self, items: List[str], current_row: int, selectable_indices: List[int]):
         menu_start_y = self.height - len(items) - 2
         menu_width = self.width - self.ascii_width - 4
@@ -295,10 +320,27 @@ class UI:
                 self.stdscr.addstr(y, x_start, f"{prefix}{item:<{menu_width-2}}")
                 self.stdscr.attroff(curses.color_pair(color_pair))
 
-    def show_message(self, message: str, title: str = "Message"):
+    def show_message(self, message: str, title: str):
         self.stdscr.clear()
         self._draw_layout(title, message)
         self.stdscr.refresh()
+
+    def show_dismissable_message(self, message: str, title: str):
+        while True:
+            self.stdscr.clear()
+            self._draw_layout(title, message)
+            self.stdscr.addstr(self.height - 3, 2, "Press Enter to continue or ESC to go back")
+            self.stdscr.refresh()
+
+            key = self.stdscr.getch()
+            if key in [curses.KEY_ENTER, 10, 13]:  # Enter key
+                break
+            elif key == 27:  # ESC key
+                return
+
+    def wait(self, seconds: int):
+        import time
+        time.sleep(seconds)
 
     def get_input(self, prompt: str) -> str:
         self.stdscr.clear()
@@ -307,7 +349,7 @@ class UI:
         curses.echo()
         curses.curs_set(1)
         
-        input_y, input_x = 6, 2
+        input_y, input_x = self.height - 3, 2
         self.stdscr.move(input_y, input_x)
         
         input_str = self.stdscr.getstr().decode('utf-8')
@@ -500,25 +542,21 @@ class CanvasApp:
                 self.ui.show_message("File upload cancelled.", "Notice")
                 return
 
-        self.ui.show_message(f"Uploading file: {os.path.basename(file_path)}...", "Upload")
+        content_type = self.api._get_content_type(file_path)
+        self.ui.show_message(f"Uploading file: {os.path.basename(file_path)}...\nContent-Type: {content_type}", "Upload")
+        
         success, message = self.api.submit_file_assignment(
             assignment['course_id'],
             assignment['id'],
             file_path
         )
         if success:
-            self.ui.show_message(message, "Success")
+            self.ui.show_message(f"{message}\nContent-Type used: {content_type}", "Success")
+            # Wait for a short time to show the success message
+            self.ui.wait(0.5)
         else:
-            error_message = f"Failed to upload file or submit assignment.\n\nError details:\n{message}"
-            self.ui.show_message(error_message, "Error")
-
-    def save_token(self, token: str):
-        self.ui.show_message("Validating token...", "Please Wait")
-        if self.validate_and_set_token(token):
-            EnvironmentManager.save_access_token(token)
-            self.ui.show_message("Access Token saved and validated successfully!", "Success")
-        else:
-            self.ui.show_message("Invalid Token. Please try again.", "Error")
+            error_message = f"Failed to upload file or submit assignment.\n\nError details:\n{message}\nContent-Type used: {content_type}"
+            self.ui.show_dismissable_message(error_message, "Error")
 
     def logout(self):
         self.api = None
