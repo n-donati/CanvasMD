@@ -2,15 +2,14 @@ import os
 import json
 import requests
 import curses
-from datetime import datetime, timezone
-import pytz
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Optional, Any, Tuple, Union
 
 # Constants
 API_BASE_URL = 'https://experiencia21.tec.mx/api/v1'
 ENV_FILE = '.env'
 SETTINGS_FILE = 'canvas_cli_settings.json'
-USER_TIMEZONE = pytz.timezone('America/Mexico_City')
+USER_TIMEZONE_OFFSET = -6
 
 class CanvasAPI:
     def __init__(self, access_token: str):
@@ -73,7 +72,7 @@ class CanvasAPI:
             return None
         try:
             parsed_date = datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%SZ")
-            return parsed_date.replace(tzinfo=timezone.utc).astimezone(USER_TIMEZONE)
+            return parsed_date.replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=USER_TIMEZONE_OFFSET)))
         except ValueError:
             return None
 
@@ -533,7 +532,8 @@ class CanvasApp:
         if isinstance(due_date, datetime):
             if due_date.tzinfo is None:
                 due_date = due_date.replace(tzinfo=timezone.utc)
-            return due_date.astimezone(USER_TIMEZONE).strftime("%d/%m %H:%M")
+            local_due_date = due_date.astimezone(timezone(timedelta(hours=USER_TIMEZONE_OFFSET)))
+            return local_due_date.strftime("%d/%m %H:%M")
         return "Invalid Date Format"
 
     def settings_menu(self):
