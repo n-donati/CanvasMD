@@ -8,8 +8,11 @@ from typing import List, Dict, Optional, Any, Tuple, Union
 # Constants
 API_BASE_URL = 'https://experiencia21.tec.mx/api/v1'
 ENV_FILE = '.env'
-SETTINGS_FILE = 'canvas_cli_settings.json'
+SETTINGS_FILE = 'canvasmd_settings.json'
 USER_TIMEZONE_OFFSET = -6
+
+# Get the directory of the script
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class CanvasAPI:
     def __init__(self, access_token: str):
@@ -129,17 +132,19 @@ class Settings:
         self.load_settings()
 
     def load_settings(self):
-        if os.path.exists(SETTINGS_FILE):
+        settings_path = os.path.join(SCRIPT_DIR, SETTINGS_FILE)
+        if os.path.exists(settings_path):
             try:
-                with open(SETTINGS_FILE, 'r') as f:
+                with open(settings_path, 'r') as f:
                     saved_settings = json.load(f)
                     self.confirm_submit = saved_settings.get('confirm_submit', True)
             except json.JSONDecodeError:
                 print(f"Error reading settings file. Using default settings.")
 
     def save_settings(self):
+        settings_path = os.path.join(SCRIPT_DIR, SETTINGS_FILE)
         try:
-            with open(SETTINGS_FILE, 'w') as f:
+            with open(settings_path, 'w') as f:
                 json.dump({'confirm_submit': self.confirm_submit}, f)
         except IOError:
             print(f"Error saving settings to file.")
@@ -147,8 +152,9 @@ class Settings:
 class EnvironmentManager:
     @staticmethod
     def load_env():
-        if os.path.exists(ENV_FILE):
-            with open(ENV_FILE) as f:
+        env_path = os.path.join(SCRIPT_DIR, ENV_FILE)
+        if os.path.exists(env_path):
+            with open(env_path) as f:
                 for line in f:
                     if line.strip() and not line.strip().startswith('#'):
                         key, value = line.strip().split('=', 1)
@@ -156,8 +162,9 @@ class EnvironmentManager:
 
     @staticmethod
     def save_access_token(token: str):
+        env_path = os.path.join(SCRIPT_DIR, ENV_FILE)
         try:
-            with open(ENV_FILE, 'w') as f:
+            with open(env_path, 'w') as f:
                 f.write(f"ACCESS_TOKEN={token}\n")
             os.environ['ACCESS_TOKEN'] = token
         except IOError:
