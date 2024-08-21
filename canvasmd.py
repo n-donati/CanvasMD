@@ -450,6 +450,15 @@ class CanvasApp:
                 self.ui.show_message("Saved access token is invalid. Please set a new token in Settings.", "Error")
         else:
             self.ui.show_message("No access token found. Please set a token in Settings.", "Notice")
+    
+    def save_token(self, token: str):
+        self.ui.show_message("Validating token...", "Please Wait")
+        if self.validate_and_set_token(token):
+            EnvironmentManager.save_access_token(token)
+            self.ui.show_message("Access Token saved and validated successfully!", "Success")
+            self.ui.wait(2)  # Wait for 2 seconds to show the success message
+        else:
+            self.ui.show_dismissable_message("Invalid Token. Please try again.", "Error")
 
     def validate_and_set_token(self, token: str) -> bool:
         temp_api = CanvasAPI(token)
@@ -600,10 +609,12 @@ class CanvasApp:
                 self.settings.confirm_submit = not self.settings.confirm_submit
                 self.settings.save_settings()
                 self.ui.show_message(f"Confirmation prompt {'enabled' if self.settings.confirm_submit else 'disabled'}.", "Settings Updated")
+                self.ui.wait(0.5)
             elif choice == 2:
                 self.logout()
             elif choice == 3 or choice is None:
                 break
+
 
 def main(stdscr):
     try:
