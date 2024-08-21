@@ -2,7 +2,7 @@
 
 ## Overview
 
-The CanvasMD is a powerful command-line interface application that allows you to interact with the Canvas Learning Management System directly from your terminal. This tool is designed for students and educators who prefer a streamlined, keyboard-driven workflow and want to manage their Canvas tasks efficiently without the need to open a web browser.
+CanvasMD is a powerful command-line interface application that allows you to interact with the Canvas Learning Management System directly from your terminal. This tool is designed for students and educators who prefer a streamlined, keyboard-driven workflow and want to manage their Canvas tasks efficiently without the need to open a web browser.
 
 ## Features
 
@@ -15,14 +15,6 @@ The CanvasMD is a powerful command-line interface application that allows you to
 - **File Submission**: Upload and submit files for assignments directly from your local machine.
 - **User-Friendly Interface**: Navigate through menus using arrow keys and enter key.
 - **Offline Settings**: Configure and save preferences for a personalized experience.
-
-## Why Use CanvasMD?
-
-1. **Efficiency**: Quickly access your courses and assignments without waiting for web pages to load.
-2. **Distraction-Free**: Focus on your tasks without the clutter of a full web interface.
-3. **Terminal Integration**: Seamlessly integrate Canvas interactions into your existing terminal workflow.
-4. **Keyboard-Centric**: Perfect for users who prefer keyboard navigation over mouse interactions.
-5. **Low-Bandwidth**: Ideal for situations where you have limited internet connectivity.
 
 ## Getting Started
 
@@ -44,26 +36,48 @@ The CanvasMD is a powerful command-line interface application that allows you to
    pip install -r requirements.txt
    ```
 
-3. Set up your Canvas access token:
+### Usage
+
+1. Run the tool using:
+   ```
+   python canvasmd.py
+   ```
+
+2. When you first run the application, you'll be prompted to enter your Canvas access token. To get your token:
    - Log in to your Canvas account in a web browser
    - Go to Account > Settings > New Access Token
    - Generate a new token and copy it
-   - Run the CanvasMD tool and use the "Save Token" option in the Settings menu to securely store your token
+   - In the CanvasMD application, choose the "Settings" option from the main menu
+   - Select "Save Token" and paste your access token when prompted
 
-### Usage
+3. Navigate through the menus using the arrow keys and press Enter to select an option.
 
-Run the tool using:
+### Optional: Create a Direct Alias
 
-```
-python canvasmd.py
-```
+To launch CanvasMD more conveniently, you can create an alias:
 
-Navigate through the menus using the arrow keys and press Enter to select an option.
+1. Open your shell configuration file (e.g., `~/.bashrc`, `~/.zshrc`, or `~/.bash_profile`)
+2. Add the following line, replacing `/path/to/CanvasMD` with the actual path to your CanvasMD directory:
+   ```
+   alias canvas='python /path/to/CanvasMD/canvasmd.py'
+   ```
+3. Save the file and reload your shell configuration:
+   ```
+   source ~/.bashrc  # or ~/.zshrc, ~/.bash_profile, etc.
+   ```
+4. Now you can launch CanvasMD from anywhere by simply typing `canvas` in your terminal
+
+## Why Use CanvasMD?
+
+1. **Efficiency**: Quickly access your courses and assignments without waiting for web pages to load.
+2. **Distraction-Free**: Focus on your tasks without the clutter of a full web interface.
+3. **Terminal Integration**: Seamlessly integrate Canvas interactions into your existing terminal workflow.
+4. **Keyboard-Centric**: Perfect for users who prefer keyboard navigation over mouse interactions.
+5. **Low-Bandwidth**: Ideal for situations where you have limited internet connectivity.
 
 ## Contributing
 
-We welcome contributions to the CanvasMD! Please feel free to submit issues, feature requests, or pull requests.
-
+We welcome contributions to CanvasMD! Please feel free to submit issues, feature requests, or pull requests.
 
 ---
 
