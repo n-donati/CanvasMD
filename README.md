@@ -48,7 +48,7 @@ The CanvasMD is a powerful command-line interface application that allows you to
    - Log in to your Canvas account in a web browser
    - Go to Account > Settings > New Access Token
    - Generate a new token and copy it
-   - Run the Canvas CLI tool and use the "Save Token" option in the Settings menu to securely store your token
+   - Run the CanvasMD tool and use the "Save Token" option in the Settings menu to securely store your token
 
 ### Usage
 
@@ -62,7 +62,7 @@ Navigate through the menus using the arrow keys and press Enter to select an opt
 
 ## Contributing
 
-We welcome contributions to the Canvas CLI Tool! Please feel free to submit issues, feature requests, or pull requests.
+We welcome contributions to the CanvasMD! Please feel free to submit issues, feature requests, or pull requests.
 
 
 ---
