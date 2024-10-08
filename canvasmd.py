@@ -299,14 +299,42 @@ class UI:
         self.stdscr.addstr(3, 2, title)
         self.stdscr.attroff(curses.color_pair(3) | curses.A_BOLD)
 
+
+    def display_menu_with_horizontal_options(self, items: List[str], title: str, horizontal_options: List[str]) -> Union[int, str, None]:
+        current_row = 0
+        current_col = 0
+        while True:
+            self.stdscr.clear()
+            self._draw_layout(title, "")
+            self._draw_menu_items(items, current_row, list(range(len(items))))
+            self._draw_horizontal_options(horizontal_options, current_row, current_col, len(items))
+            self.stdscr.refresh()
+
+            key = self.stdscr.getch()
+            if key == curses.KEY_UP and current_row > 0:
+                current_row -= 1
+            elif key == curses.KEY_DOWN and current_row < len(items):
+                current_row += 1
+            elif key == curses.KEY_LEFT and current_col > 0:
+                current_col -= 1
+            elif key == curses.KEY_RIGHT and current_col < len(horizontal_options) - 1:
+                current_col += 1
+            elif key in [curses.KEY_ENTER, 10, 13]:
+                if current_row == len(items):
+                    return horizontal_options[current_col].lower()[2:-2]  # Return "exit" or "config"
+                else:
+                    return current_row
+            elif key == 27:  # ESC
+                return None
+
     def _draw_menu_items(self, items: List[str], current_row: int, selectable_indices: List[int]):
-        menu_start_y = self.height - len(items) - 2
+        menu_start_y = self.height - len(items) - 4  # Adjusted to leave space for horizontal options
         menu_width = self.width - self.ascii_width - 4
         x_start = 2
 
         for idx, item in enumerate(items):
             y = menu_start_y + idx
-            if y >= self.height:
+            if y >= self.height - 3:  # Adjusted to leave space for horizontal options
                 break
             
             if idx not in selectable_indices:
@@ -319,6 +347,23 @@ class UI:
                 prefix = '> ' if idx == current_row else '  '
                 self.stdscr.addstr(y, x_start, f"{prefix}{item:<{menu_width-2}}")
                 self.stdscr.attroff(curses.color_pair(color_pair))
+    
+    def _draw_horizontal_options(self, options: List[str], current_row: int, current_col: int, num_items: int):
+        y = self.height - 2
+        total_width = sum(len(option) for option in options) + len(options) - 1  # -1 for spacing
+        start_x = (self.width - self.ascii_width - total_width) // 2  # Centered in the main content area
+
+        for idx, option in enumerate(options):
+            x = start_x + sum(len(opt) for opt in options[:idx]) + idx
+            if current_row == num_items and idx == current_col:
+                self.stdscr.attron(curses.color_pair(2))
+                self.stdscr.addstr(y, x, option)
+                self.stdscr.attroff(curses.color_pair(2))
+            else:
+                self.stdscr.attron(curses.color_pair(1))
+                self.stdscr.addstr(y, x, option)
+                self.stdscr.attroff(curses.color_pair(1))
+
 
     def show_message(self, message: str, title: str):
         self.stdscr.clear()
@@ -358,7 +403,6 @@ class UI:
         curses.curs_set(0)
         
         return input_str
-
 
     def file_browser(self, start_path: str = '.') -> Optional[str]:
         current_path = os.path.abspath(start_path)
@@ -429,14 +473,11 @@ class CanvasApp:
 
     def run(self):
         self.load_initial_token()
-        while True:
-            choice = self.ui.display_menu(["Canvas", "Settings", "Exit"], "Main Menu")
-            if choice == 0:
-                self.canvas_menu()
-            elif choice == 1:
-                self.settings_menu()
-            elif choice == 2 or choice is None:
-                break
+        if not self.logged_in:
+            self.settings_menu()
+        
+        if self.logged_in:
+            self.canvas_menu()
 
     def load_initial_token(self):
         self.ui.show_message("Initializing Canvas CLI...", "Loading")
@@ -446,10 +487,10 @@ class CanvasApp:
             self.ui.show_message("Validating saved access token...", "Loading")
             if self.validate_and_set_token(access_token):
                 self.ui.show_message("Access token loaded successfully!", "Success")
+                self.ui.wait(1)
             else:
                 self.ui.show_message("Saved access token is invalid. Please set a new token in Settings.", "Error")
-        else:
-            self.ui.show_message("No access token found. Please set a token in Settings.", "Notice")
+                self.ui.wait(2)
     
     def save_token(self, token: str):
         self.ui.show_message("Validating token...", "Please Wait")
@@ -481,11 +522,20 @@ class CanvasApp:
 
         while True:
             course_names = [course['name'] for course in courses]
-            course_idx = self.ui.display_menu(course_names + ["[ Go Back ]"], "Available Courses")
-            if course_idx is None or course_idx == len(course_names):
+            horizontal_options = ["[ Exit ]", "[ Config ]"]
+            
+            choice = self.ui.display_menu_with_horizontal_options(
+                course_names, 
+                "Available Courses", 
+                horizontal_options
+            )
+            
+            if choice == "exit":
                 return
-
-            self.display_assignments(courses[course_idx])
+            elif choice == "config":
+                self.settings_menu()
+            elif choice is not None:
+                self.display_assignments(courses[choice])
 
     def display_assignments(self, course: Dict[str, Any]):
         assignments = self.api.get_assignments(course['id'])
@@ -605,6 +655,8 @@ class CanvasApp:
             if choice == 0:
                 new_token = self.ui.get_input("Enter new Access Token:")
                 self.save_token(new_token)
+                if self.logged_in:
+                    return  # Exit settings menu after successful login
             elif choice == 1:
                 self.settings.confirm_submit = not self.settings.confirm_submit
                 self.settings.save_settings()
@@ -613,8 +665,11 @@ class CanvasApp:
             elif choice == 2:
                 self.logout()
             elif choice == 3 or choice is None:
-                break
-
+                if self.logged_in:
+                    return
+                else:
+                    self.ui.show_message("Please set a valid token before exiting settings.", "Notice")
+                    self.ui.wait(2)
 
 def main(stdscr):
     try:
